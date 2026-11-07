@@ -66,7 +66,9 @@ def format_notification(payload):
         lines.extend(f"<b>{safe(key, 80)}:</b> {safe(value)}" for key, value in list(extra.items())[:20])
     if len(lines) == 1:
         raise ValueError("At least one lead field is required")
-    return "\n".join(lines)[:4000]
+    while len("\n".join(lines)) > 3900:
+        lines.pop()
+    return "\n".join(lines)
 
 
 def poll_telegram():
