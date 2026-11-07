@@ -106,7 +106,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         if self.path == "/health":
-            self.respond(200, {"ok": True})
+            self.respond(200, {"ok": True, "telegram_configured": bool(TOKEN)})
         else:
             self.respond(404, {"error": "not found"})
 
@@ -117,6 +117,9 @@ class Handler(BaseHTTPRequestHandler):
         auth = self.headers.get("Authorization", "")
         if not NOTIFY_SECRET or not hmac.compare_digest(auth, f"Bearer {NOTIFY_SECRET}"):
             self.respond(401, {"error": "unauthorized"})
+            return
+        if not TOKEN:
+            self.respond(503, {"error": "TELEGRAM_BOT_TOKEN is not configured"})
             return
         if not CHAT_ID:
             self.respond(503, {"error": "TELEGRAM_CHAT_ID is not configured"})
@@ -145,9 +148,10 @@ class Handler(BaseHTTPRequestHandler):
 
 def main():
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-    if not TOKEN:
-        raise SystemExit("TELEGRAM_BOT_TOKEN is required")
-    threading.Thread(target=poll_telegram, daemon=True).start()
+    if TOKEN:
+        threading.Thread(target=poll_telegram, daemon=True).start()
+    else:
+        LOG.warning("TELEGRAM_BOT_TOKEN is not configured; Telegram bot is inactive")
     server = ThreadingHTTPServer(("0.0.0.0", PORT), Handler)
     LOG.info("Listening on port %s", PORT)
     server.serve_forever()
